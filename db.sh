@@ -76,6 +76,8 @@ function chooseAction {
 ### LIST AVAILABLE DATABASES
 function actionListDatabases {
 	listAvailableDatabases
+
+	quitProgram
 }
 
 function listAvailableDatabases {
@@ -105,6 +107,23 @@ function listAvailableDatabases {
 	echo " "
 }
 
-### Check arguments
+### QUIT PROGRAM
+function quitProgram {
+	read -p "Quit program ? (y/n) " quit_program
+
+	case $quit_program in
+		'y' )
+			exit
+			;;
+		'n' )
+			chooseAction
+			break
+			;;
+		* )
+			echo "$(tput setaf 3)WARN : incorrect answer$(tput sgr 0)"
+			quitProgram
+			;;
+	esac
+}
+
 construct
-exit

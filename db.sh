@@ -5,6 +5,7 @@ TEXTDOMAIN=db
 ### User Parameters
 mysql_user='root'
 mysql_password=''
+mysql_export_path='/home/'$(whoami)'/Téléchargements'
 
 ### Variables
 user_has_set_mysql_password=false
@@ -46,6 +47,7 @@ function construct {
 
 	if [[ `mysql -u $mysql_user --password=$mysql_password -e "SHOW databases" 2>&1 | grep -v "[Warning]"` ]]; then
 		if $user_has_set_mysql_password; then
+			echo " "
 			printf "$(tput setaf 2)Mysql $mysql_user password set!$(tput sgr 0)\n\n"
 		fi
 	else
@@ -156,6 +158,40 @@ function confirmDatabaseDeletion {
 	echo $confirm_delete_db
 }
 
+### EXPORT A DATABASE TO SQL FILE
+function exportDatabase {
+	read -p "Export database to sql file ? (y/n) " export_db
+
+	case $export_db in
+		n|y )
+			shift
+			;;
+		* )
+			echo "$(tput setaf 3)WARN : incorrect answer$(tput sgr 0)"
+			exportDatabase
+			;;
+	esac
+
+	echo $export_db
+}
+
+### OVERRIDE A SQL FILE WHEN EXPORTING DATABASE
+function overrideFile {
+	read -p "Override the existant file ? (y/n) " confirm_override
+
+	case $confirm_override in
+		n|y )
+			shift
+			;;
+		* )
+			echo "$(tput setaf 3)WARN : incorrect answer$(tput sgr 0)"
+			overrideFile
+			;;
+	esac
+
+	echo $confirm_override
+}
+
 ### DELETE DATABASE
 function actionDeleteDatabase {
 	mysql_db=( $(mysql -u $mysql_user --password=$mysql_password -e "SHOW databases") )
@@ -201,7 +237,42 @@ function actionDeleteDatabase {
 
 	if [[ $confirm_delete == 'n' ]]; then
 		echo "Task canceled"
+		echo " "
 		quitProgram
+	fi
+
+	confirm_export=$(exportDatabase)
+
+	echo " "
+
+	if [[ $confirm_export == 'y' ]]; then
+		db_tmp_file="$mysql_export_path/${db_list[${db_id_to_delete}]}.sql"
+
+		echo "$(tput setaf 7)Exporting database ${db_list[${db_id_to_delete}]} to $db_tmp_file...$(tput sgr 0)"
+		echo " "
+
+		if [ ! -f $db_tmp_file ]; then
+			touch $db_tmp_file
+		else
+			override_file=$(overrideFile)
+
+			echo " "
+
+			if [[ $override_file == 'n' ]]; then
+				echo "Task canceled"
+				echo " "
+				quitProgram
+			fi
+		fi
+
+		if ! [ `mysqldump -u $mysql_user --password=$mysql_password ${db_list[${db_id_to_delete}]} > $db_tmp_file 2>&1 | grep -v "[Warning]"` ]; then
+			echo "$(tput setaf 2)Database ${db_list[${db_id_to_delete}]} has been exported in $db_tmp_file!$(tput sgr 0)"
+			echo " "
+		else
+			echo "$(tput setaf 1)ERR : cannot export database ${db_list[${db_id_to_delete}]}$(tput sgr 0)"
+			echo " "
+			quitProgram
+		fi
 	fi
 
 	if ! [ `mysql -u $mysql_user --password=$mysql_password -e "DROP database ${db_list["$db_id_to_delete"]}" 2>&1 | grep -v "[Warning]"` ]; then

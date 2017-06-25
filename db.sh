@@ -58,6 +58,7 @@ function chooseAction {
 	echo " "
 
 	read -p "Choose an action: " action_number
+	echo " "
 
 	case $action_number in
 		1 )
@@ -74,7 +75,34 @@ function chooseAction {
 
 ### LIST AVAILABLE DATABASES
 function actionListDatabases {
-	echo "List of databases"
+	listAvailableDatabases
+}
+
+function listAvailableDatabases {
+	mysql_db=( $(mysql -u $mysql_user --password=$mysql_password -e "SHOW databases") )
+
+	declare -A db_list
+	i=0
+
+	for db in ${mysql_db[@]}; do
+		if [[ $i == 0 ]]; then
+			((i++))
+		else
+			if ! [[ $db == "information_schema" || $db == "mysql" || $db == "performance_schema" || $db == "sys" ]]; then
+				db_list[$i]=$db
+				((i++))
+			fi
+		fi
+	done
+
+	echo " "
+	echo "Available databases"
+
+	for db_id in ${!db_list[*]}; do
+		echo "    (${db_id}) ${db_list[${db_id}]}"
+	done
+
+	echo " "
 }
 
 ### Check arguments
